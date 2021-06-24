@@ -13,6 +13,7 @@
             "program": "${workspaceFolder}/AppRoles.WebApp/bin/Debug/netcoreapp3.1/AppRoles.WebApp.dll",
             "args": [],
             "cwd": "${workspaceFolder}/AppRoles.WebApp",
+            "console": "integratedTerminal",
             "stopAtEntry": false,
             // Enable launching a web browser when ASP.NET Core starts. For more information: https://aka.ms/VSCode-CS-LaunchJson-WebBrowser
             "serverReadyAction": {
