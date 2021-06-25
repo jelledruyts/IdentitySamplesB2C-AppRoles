@@ -46,13 +46,13 @@ For the last two options which use a custom REST API for the core authorization 
 In summary, in this sample we will perform the following:
 
 - Declare App Roles on the app registrations in Azure AD B2C and assign users to these App Roles to define the Role-Based Access Control permissions.
-- Define a custom user attribute called `AppRoles`, resulting in an `extension_AppRoles` claim type as seen by the applications.
+- Define a custom user attribute called `AppRoles`, resulting in an `extension_AppRoles` claim in the token which Azure AD B2C will ultimately send to the applications.
 - Create a user flow which calls an API Connector before the token gets issued.
 - The REST API being invoked will receive the user's object id as well as the client id of the application that the user is trying to sign in to.
 - It then uses the Microsoft Graph API to determine which App Roles the user is assigned to on that specific application.
 - Finally, the REST API returns a single (space-delimited) value with all the user's App Roles as the `extension_AppRoles` claim type.
 
-The ASP.NET Core application in this sample serves two purposes:
+The ASP.NET Core based application in this sample serves two purposes:
 
 - It contains the REST API being called through the API Connector functionality in Azure AD B2C (hosted under `/api/approles/getapproles`).
 - It also provides a test web application (hosted at the root of the app) that you can sign in to and see which claims were emitted in the token, as well as do certain role checks to test the authorization logic.
@@ -61,19 +61,21 @@ The ASP.NET Core application in this sample serves two purposes:
 
 ## Setup
 
-To run this sample successfully, complete the following steps:
+### Configure Azure AD B2C
 
-- For the test web application (if you choose to use it), create an app registration in Azure AD B2C for use with *Accounts in any identity provider or organizational directory (for authenticating users with user flows)*:
+- (Optional) Create an **app registration for the test web application** (if you choose to use it):
+  - Make sure to create the app registration for use with **Accounts in any identity provider or organizational directory (for authenticating users with user flows)**.
   - The client id of this application should go into the `AzureAdB2C:ClientId` application setting.
   - Allow the Implicit grant flow (for Access and ID tokens).
-  - Set the Redirect URI to `https://localhost:5001/signin-oidc` when running locally.
+  - Set the Redirect URI to `https://localhost:5001/signin-oidc` when running locally or `https://<your-host>/signin-oidc` when running publicly.
   - There's no need for a client secret (the sample application only requests ID tokens so it doesn't need a secret).
-- For the REST API to be able to call the Microsoft Graph API, create an app registration for use with *Accounts in this organizational directory only*:
+- Create an **app registration for the REST API** so that it can call the Microsoft Graph API:
   - Follow the documentation to [register a management application](https://docs.microsoft.com/azure/active-directory-b2c/microsoft-graph-get-started?tabs=app-reg-ga).
+  - Because this app isn't used with any user flows, make sure to create the app registration for use with **Accounts in this organizational directory only**.
   - The client id of this application should go into the `AzureAdB2C:AzureADAppRolesProviderClientId` application setting.
   - Configure **Application Permissions** for the Microsoft Graph with `User.Read.All` and `Application.Read.All` permissions (or alternatively simply `Directory.Read.All` permissions) and perform the required admin consent.
-  - Create a client secret for this application (it will be needed to [acquire tokens using the OAuth 2.0 Client Credentials grant](https://docs.microsoft.com/azure/active-directory-b2c/microsoft-graph-get-started?tabs=app-reg-ga#microsoft-graph-api-interaction-modes)) and place its value in the `AzureAdB2C:AzureADAppRolesProviderClientSecret` application setting.
-- Declare App Roles on the relevant app registrations in Azure AD B2C (like the test web application) and assign users to them:
+  - Create a client secret for this application (it will be needed to [acquire tokens using the OAuth 2.0 Client Credentials grant](https://docs.microsoft.com/azure/active-directory-b2c/microsoft-graph-get-started?tabs=app-reg-ga#microsoft-graph-api-interaction-modes)); this secret value should go into the `AzureAdB2C:AzureADAppRolesProviderClientSecret` application setting.
+- **Declare App Roles on the relevant app registrations** in Azure AD B2C (like the test web application) and **assign users to them**:
   - Follow the documentation to [declare roles for an application](https://docs.microsoft.com/azure/active-directory/develop/howto-add-app-roles-in-azure-ad-apps#declare-roles-for-an-application).
   - Note that today, you cannot use the Azure Portal to declare the App Roles in an Azure AD B2C tenant, you have to use the manifest.
   - Ensure that you create the App Roles with `allowedMemberTypes` set to `User` so that you can assign users to these roles.
@@ -114,18 +116,42 @@ To run this sample successfully, complete the following steps:
   ```
 
   - Once this is done, you can [assign users to these App Roles through the Azure Portal](https://docs.microsoft.com/azure/active-directory/develop/howto-add-app-roles-in-azure-ad-apps#assign-users-and-groups-to-roles).
-- Create a custom user attribute in B2C:
+- **Create a custom user attribute for the App Roles** in Azure AD B2C:
   - Follow the documentation to [create a custom attribute](https://docs.microsoft.com/azure/active-directory-b2c/user-flow-custom-attributes?pivots=b2c-user-flow#create-a-custom-attribute) called `AppRoles` and set the data type to `String`.
   - Note: if you want to use a different custom attribute name, update the `AppRoles:UserAttributeName` setting in the application configuration with your specific claim name (including the `extension_` prefix).
-- Create an API connector towards the App Roles API exposed by this application:
-  - The API connector should have the endpoint URL defined as `https://<your-host>/api/approles/getapproles`.
-  - Note that you need a publicly accessible endpoint for this; when running locally you can consider using a tool such as [ngrok](https://ngrok.com/) to tunnel the traffic to your local machine.
-- Create user flows for **Sign up and sign in** (and optionally **Password reset** and **Profile editing**):
+- **Create user flows** for **Sign up and sign in** (and optionally **Password reset** and **Profile editing**):
   - For all these flows, use the *recommended* version which gives you access to the API Connectors feature.
   - Ensure to return at least `AppRoles`, `Display Name` and `User's Object ID` as the **Application claims**.
-  - Configure the API Connector you defined above to run during the **Before sending the token** step.
   - On a **Profile editing** flow, ensure *not* to select `AppRoles` in the **User attributes**; however even if a user would be able to change their app role user attribute stored statically in the directory, its value would still get overwritten by the REST API at runtime - so even in this case there is no risk of elevation of privilege.
-- Configure the app settings with all required values from the steps above:
-  - E.g. take the correct values for app client id's, user flow policy id's, etc. and store them in the `appsettings.json` file or (preferred for local development) in [.NET User Secrets](https://docs.microsoft.com/aspnet/core/security/app-secrets?view=aspnetcore-3.1&tabs=windows) or (preferred in cloud hosting platforms) through the appropriate app settings.
-- Run the ASP.NET Core project to start the REST API (as well as the test web application)
-  - At this moment, any application which uses a user flow configured with the API Connector should see the `extension_AppRoles` claim come in holding the user's assigned App Roles.
+
+### Configure and run the sample app
+
+There are a few options to run the sample app (containing both the REST API and test web application):
+
+- You can build and run it locally.
+  - You can open the root folder of this repo in [Visual Studio Code](https://code.visualstudio.com/) where you can just build and debug (install the recommended extensions in the workspace if you don't have them).
+  - In this case, application settings are configured in the `AppRoles.WebApp/appsettings.json` file or by using [.NET User Secrets](https://docs.microsoft.com/aspnet/core/security/app-secrets?view=aspnetcore-3.1&tabs=windows).
+- You can build and run it in a [devcontainer](https://code.visualstudio.com/docs/remote/containers) (including [GitHub Codespaces](https://github.com/features/codespaces)).
+  - All pre-requisites such as .NET Core are provided in the devcontainer so you don't need to install anything locally.
+  - In this case, application settings are configured in the `AppRoles.WebApp/appsettings.json` file or by using [.NET User Secrets](https://docs.microsoft.com/aspnet/core/security/app-secrets?view=aspnetcore-3.1&tabs=windows).
+- You can host a pre-built Docker container which contains the sample app.
+  - You can find the latest published version of the Docker container publicly on **Docker Hub** at **[jelledruyts/identitysamplesb2c-approles](https://hub.docker.com/r/jelledruyts/identitysamplesb2c-approles)**
+  - In this case, application settings are configured through environment variables. Note that on Linux a colon (`:`) is not allowed in an environment variable, so use a double underscore instead of `:` in that case (e.g. `AzureAdB2C__ClientId`).
+- You can easily deploy that same container to Azure App Service.
+  - [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fjelledruyts%2FIdentitySamplesB2C-AppRoles%2Fmain%2Fazuredeploy.json)
+  - In this case, you will be prompted to fill in the right application settings for the web app during deployment.
+
+### Configure the API Connector
+
+- Create an API connector towards the App Roles API exposed by the sample app:
+  - Follow the documentation to [add an API connector to a user flow](https://docs.microsoft.com/azure/active-directory-b2c/add-api-connector?pivots=b2c-user-flow).
+  - The API connector should have the endpoint URL defined as `https://<your-host>/api/approles/getapproles`.
+  - Note that you need a publicly accessible endpoint for this; when running locally you can consider using a tool such as [ngrok](https://ngrok.com/) to tunnel the traffic to your local machine.
+  - Note that the REST API in this sample isn't secured; you can set the authentication type to Basic and fill in a dummy username and password. In a real world production case, this should of course be properly secured.
+  - Go back to the **Sign up and sign in** user flow you created earlier (and optionally other user flows) and configure the API Connector to run during the **Before sending the token** step.
+
+### Try it out
+
+When the sample app is running and the API Connector is configured, you can now try the **Sign up and sign in** user flow (or any other user flow configured with the same API Connector) and you should see the `extension_AppRoles` claim come in holding the user's assigned App Roles on the application they've signed in to.
+
+If you use the test web application, you can sign in and see the claims as well as the App Roles on the *Identity* page. You should also be able to access the *Admin Only* page if you have the `Admin` role (and should see an error if you don't).
