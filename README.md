@@ -147,7 +147,7 @@ There are a few options to run the sample app (containing both the REST API and 
   - Follow the documentation to [add an API connector to a user flow](https://docs.microsoft.com/azure/active-directory-b2c/add-api-connector?pivots=b2c-user-flow).
   - The API connector should have the endpoint URL defined as `https://<your-host>/api/approles/getapproles`.
   - Note that you need a publicly accessible endpoint for this; when running locally you can consider using a tool such as [ngrok](https://ngrok.com/) to tunnel the traffic to your local machine.
-  - Note that the REST API in this sample isn't secured; you can set the authentication type to Basic and fill in a dummy username and password. In a real world production case, this should of course be properly secured.
+  - Note that the REST API in this sample isn't secured; you can set the authentication type to Basic and fill in a dummy username and password. In a real world production case, this should of course be [properly secured](https://docs.microsoft.com/azure/active-directory-b2c/api-connectors-overview?pivots=b2c-user-flow#security-considerations).
   - Go back to the **Sign up and sign in** user flow you created earlier (and optionally other user flows) and configure the API Connector to run during the **Before sending the token** step.
 
 ### Try it out
