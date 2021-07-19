@@ -1,4 +1,0 @@
-{
-    "appService.preDeployTask": "publish",
-    "appService.deploySubpath": "AppRoles.WebApp\\bin\\Debug\\netcoreapp3.1\\publish"
-}
